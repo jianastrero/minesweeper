@@ -28,10 +28,18 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
         }
     }
     val blocks = Array(columns * rows) {
-        if (it in minePositions)
-            Block.MINE
-        else
-            Block.SAFE
+        if (it in minePositions) {
+            Block('X')
+        } else {
+            Block('.')
+        }
+    }.apply {
+        minePositions.forEach {
+            val around = getAround(it)
+            around.forEach { aroundIndex ->
+                this[aroundIndex].nearMines = this[aroundIndex].nearMines + 1
+            }
+        }
     }
 
     val state: State
@@ -80,14 +88,39 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
     fun pointToIndex(column: Int, row: Int): Int =
         row * columns + column
 
+    /**
+     *
+     * @param index The index of a point
+     *
+     * @return Array of indexes around the point denoted by index
+     */
+    fun getAround(index: Int): IntArray {
+        val list = mutableListOf<Int>()
+        val (pointCol, pointRow) = indexToPoint(index)
+
+        (-1..1).forEach { row ->
+            (-1..1).forEach { col ->
+                if (row != 0 || col != 0) {
+                    val x = pointCol + col
+                    val y = pointRow + row
+
+                    if (x in 0 until columns && y in 0 until rows) {
+                        list.add(pointToIndex(x, y))
+                    }
+                }
+            }
+        }
+
+        return list.toIntArray()
+    }
+
     abstract class State(protected val minesweeper: Minesweeper) {
 
         abstract fun run()
     }
 
-    enum class Block(val representation: Char) {
-        SAFE('.'),
-        MINE('X')
+    data class Block(val representation: Char) {
+        var nearMines: Int = 0
     }
 }
 
@@ -98,7 +131,13 @@ class ViewState(minesweeper: Minesweeper) : Minesweeper.State(minesweeper) {
             // Move through Y
             repeat(minesweeper.columns) { column ->
                 // Move through X
-                print(minesweeper.blocks[minesweeper.pointToIndex(column, row)].representation)
+                val block = minesweeper.blocks[minesweeper.pointToIndex(column, row)]
+                print(
+                    if (block.representation == 'X' || block.nearMines == 0)
+                        block.representation
+                    else
+                        block.nearMines
+                )
             }
             println()
         }
