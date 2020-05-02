@@ -1,26 +1,44 @@
 package minesweeper
 
+import java.util.Scanner
 import kotlin.math.floor
+import kotlin.random.Random
 
 fun main() {
-    val minesweeper = Minesweeper(9, 9)
+    val scanner = Scanner(System.`in`)
+
+    print("How many mines do you want on the field? ")
+    val mineCount = scanner.nextInt()
+
+    val minesweeper = Minesweeper(9, 9, mineCount)
 }
 
-class Minesweeper(val columns: Int, val rows: Int) {
+class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
 
+    private val random = Random(System.currentTimeMillis())
     private lateinit var _state: State
+
+    private val minePositions = Array(mineCount) { it }.apply {
+        val set = mutableSetOf<Int>()
+        while (set.size < mineCount) {
+            set.add(random.nextInt(columns * rows))
+        }
+        set.forEachIndexed { index, i ->
+            this[index] = i
+        }
+    }
     val blocks = Array(columns * rows) {
-        val (_, row) = indexToPoint(it)
-        if (row % 2 == 0)
-            Block.SAFE
-        else
+        if (it in minePositions)
             Block.MINE
+        else
+            Block.SAFE
     }
 
     val state: State
         get() = _state
 
     init {
+        // Show initial state
         setState(ViewState(this))
     }
 
