@@ -11,6 +11,10 @@ fun main() {
     val mineCount = scanner.nextInt()
 
     val minesweeper = Minesweeper(9, 9, mineCount)
+
+    while (true) {
+
+    }
 }
 
 class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
@@ -127,17 +131,37 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
 class ViewState(minesweeper: Minesweeper) : Minesweeper.State(minesweeper) {
 
     override fun run() {
-        repeat(minesweeper.rows) { row ->
+        repeat(minesweeper.rows + 3) { row ->
             // Move through Y
-            repeat(minesweeper.columns) { column ->
+            repeat(minesweeper.columns + 3) { col ->
                 // Move through X
-                val block = minesweeper.blocks[minesweeper.pointToIndex(column, row)]
-                print(
-                    if (block.representation == 'X' || block.nearMines == 0)
-                        block.representation
-                    else
-                        block.nearMines
-                )
+                if (col == 1 || col == minesweeper.columns + 2) {
+                    print("|")
+                } else if (row == 1 || row == minesweeper.rows + 2) {
+                    print("-")
+                } else if (row == 0) {
+                    print(
+                        if (col > 0)
+                            col - 1
+                        else
+                            " "
+                    )
+                } else if (col == 0) {
+                    print(
+                        if (row > 0)
+                            row - 1
+                        else
+                            " "
+                    )
+                } else {
+                    val block = minesweeper.blocks[minesweeper.pointToIndex(col - 2, row - 2)]
+                    print(
+                        if (block.representation != 'X' && block.nearMines > 0)
+                            block.nearMines
+                        else
+                            "."
+                    )
+                }
             }
             println()
         }
