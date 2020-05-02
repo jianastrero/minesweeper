@@ -12,8 +12,21 @@ fun main() {
 
     val minesweeper = Minesweeper(9, 9, mineCount)
 
-    while (true) {
+    mainLoop@ while (true) {
+        while (minesweeper.state !is MarkState || !minesweeper.state.finish()) {
+            print("Set/delete mines marks (x and y coordinates): ")
+            val x = scanner.nextInt()
+            val y = scanner.nextInt()
 
+            minesweeper.mark(x, y)
+        }
+        minesweeper.view()
+        minesweeper.check()
+
+        if (minesweeper.state.finish()) {
+            println("Congratulations! You found all mines!")
+            break@mainLoop
+        }
     }
 }
 
@@ -22,7 +35,7 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
     private val random = Random(System.currentTimeMillis())
     private lateinit var _state: State
 
-    private val minePositions = Array(mineCount) { it }.apply {
+    val minePositions = Array(mineCount) { it }.apply {
         val set = mutableSetOf<Int>()
         while (set.size < mineCount) {
             set.add(random.nextInt(columns * rows))
@@ -45,6 +58,7 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
             }
         }
     }
+    val marks = mutableSetOf<Int>()
 
     val state: State
         get() = _state
@@ -57,6 +71,18 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
     fun setState(state: State) {
         _state = state
         _state.run()
+    }
+
+    fun view() {
+        setState(ViewState(this))
+    }
+
+    fun mark(x: Int, y: Int) {
+        setState(MarkState(this, x, y))
+    }
+
+    fun check() {
+        setState(CheckState(this))
     }
 
     /**
@@ -90,7 +116,7 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
      * @return Index of the given point
      */
     fun pointToIndex(column: Int, row: Int): Int =
-        row * columns + column
+        (row * columns + column).coerceIn(0 until rows * columns)
 
     /**
      *
@@ -121,6 +147,8 @@ class Minesweeper(val columns: Int, val rows: Int, mineCount: Int) {
     abstract class State(protected val minesweeper: Minesweeper) {
 
         abstract fun run()
+
+        abstract fun finish(): Boolean
     }
 
     data class Block(val representation: Char) {
@@ -154,16 +182,64 @@ class ViewState(minesweeper: Minesweeper) : Minesweeper.State(minesweeper) {
                             " "
                     )
                 } else {
-                    val block = minesweeper.blocks[minesweeper.pointToIndex(col - 2, row - 2)]
+                    val index = minesweeper.pointToIndex(col - 2, row - 2)
                     print(
-                        if (block.representation != 'X' && block.nearMines > 0)
-                            block.nearMines
-                        else
-                            "."
+                        if (minesweeper.marks.contains(index)) {
+                            "*"
+                        } else {
+                            val block = minesweeper.blocks[index]
+                            if (block.representation != 'X' && block.nearMines > 0)
+                                block.nearMines
+                            else
+                                "."
+                        }
                     )
                 }
             }
             println()
         }
+    }
+
+    override fun finish() = true
+}
+
+class MarkState(minesweeper: Minesweeper, private val x: Int, private val y: Int) : Minesweeper.State(minesweeper) {
+
+    private var finish = false
+
+    override fun run() {
+        val index = minesweeper.pointToIndex(x - 1, y - 1)
+        val block = minesweeper.blocks[index]
+
+        finish = if (block.representation != 'X' && block.nearMines > 0) {
+            println("There is a number here!")
+            false
+        } else {
+            minesweeper.marks.addOrRemove(index)
+            true
+        }
+    }
+
+    override fun finish() = finish
+}
+
+class CheckState(minesweeper: Minesweeper) : Minesweeper.State(minesweeper) {
+
+    private var finish = false
+
+    override fun run() {
+        finish =
+            minesweeper.marks.containsAll(minesweeper.minePositions.toList()) &&
+                minesweeper.marks.size == minesweeper.minePositions.size
+    }
+
+    override fun finish() = finish
+}
+
+fun <T> MutableCollection<T>.addOrRemove(element: T) {
+    if (contains(element)) {
+        remove(element)
+    } else {
+        add(element)
     }
 }
